@@ -35,11 +35,16 @@ Support: buyer reports a claim → reviewer suspends track (new sales/previews s
 
 ## Run locally
 
-Requirements: Node 22, pnpm 10, Python 3.11+, ffmpeg, Docker (or a local Postgres 16).
+**Windows:** double-click `start.bat` (needs Git, Node 22+ and Docker Desktop; it installs pnpm, starts
+Postgres + EchoScore in Docker, migrates, seeds demo data, opens the web app and worker in their own windows
+and opens the browser). `stop.bat` stops the Docker services.
+
+Manual setup — requirements: Node 22, pnpm 10, Docker (or a local Postgres 16 + Python 3.11 for EchoScore).
+ffmpeg is bundled via `ffmpeg-static` (override with `FFMPEG_PATH`).
 
 ```bash
 cp .env.example apps/web/.env.local     # stub mode: no real Stripe/R2 needed
-docker compose up -d                      # Postgres :5432 + EchoScore :8001
+docker compose up -d                      # Postgres :54329 + EchoScore :8001
 pnpm install
 pnpm db:migrate
 pnpm db:seed --demo                       # staff/demo accounts + 3 synthetic tracks through the real pipeline

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -10,6 +10,22 @@ import { env } from "../env";
 import { storage } from "../storage";
 
 const run = promisify(execFile);
+
+/**
+ * ffmpeg binary: FFMPEG_PATH, else the bundled ffmpeg-static binary (so Windows dev machines
+ * need no separate install), else `ffmpeg` on PATH.
+ */
+async function ffmpegBinary(): Promise<string> {
+  if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
+  try {
+    const mod = (await import("ffmpeg-static")) as unknown as { default?: string | null };
+    const bundled = mod.default;
+    if (bundled && (await stat(bundled).then(() => true, () => false))) return bundled;
+  } catch {
+    /* package or binary missing */
+  }
+  return "ffmpeg";
+}
 
 export class PermanentJobError extends Error {}
 
@@ -126,7 +142,7 @@ export async function generatePreview(trackId: string): Promise<void> {
     const output = path.join(dir, "out.mp3");
     await writeFile(input, await store.get(file.storage_key));
     try {
-      await run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", input, "-vn", "-ac", "2", "-ar", "44100", "-b:a", "128k", output], {
+      await run(await ffmpegBinary(), ["-hide_banner", "-loglevel", "error", "-y", "-i", input, "-vn", "-ac", "2", "-ar", "44100", "-b:a", "128k", output], {
         timeout: 5 * 60 * 1000
       });
     } catch (error) {

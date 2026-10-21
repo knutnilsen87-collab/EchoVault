@@ -15,6 +15,6 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": ["esbuild", "ffmpeg-static", "sharp", "unrs-resolver"]
   }
 }

@@ -1,8 +1,7 @@
-import "./load-env";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { closePool, pool } from "../server/db";
+import { pool } from "../server/db";
 
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../infra/db/migrations");
 
@@ -34,12 +33,4 @@ export async function migrate(log = console.log): Promise<string[]> {
   return ran;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  migrate()
-    .then(() => closePool())
-    .catch(async (error) => {
-      console.error(error.message);
-      await closePool();
-      process.exit(1);
-    });
-}
+// Case-insensitive: on Windows the drive letter can differ in case between argv and import.meta.url.

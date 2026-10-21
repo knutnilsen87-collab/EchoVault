@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: echovault
       POSTGRES_DB: echovault
     ports:
-      - "5432:5432"
+      - "54329:5432" # 54329 avoids clashing with a Postgres you may already run on 5432
     volumes:
       - echovault_pg:/var/lib/postgresql/data
     healthcheck:
