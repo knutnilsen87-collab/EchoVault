@@ -7,7 +7,7 @@
     "dev": "pnpm --filter @echovault/web dev",
     "build": "pnpm --filter @echovault/web build",
     "worker": "pnpm --filter @echovault/web worker",
-    "db:migrate": "node scripts/migrate.mjs",
+    "db:migrate": "pnpm --filter @echovault/web migrate",
     "db:seed": "pnpm --filter @echovault/web seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
