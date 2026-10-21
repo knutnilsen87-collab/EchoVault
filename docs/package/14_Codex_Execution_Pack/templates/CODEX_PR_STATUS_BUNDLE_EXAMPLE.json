@@ -1,0 +1,31 @@
+{
+  "task_id": "PR-03-public-catalog",
+  "phase": "implementation",
+  "scope_lock": [
+    "apps/web/src/app/api/v1/vault/tracks/route.ts",
+    "apps/web/src/server/repositories.ts",
+    "apps/web/src/server/mappers.ts"
+  ],
+  "facts": [
+    "API envelope is canonical",
+    "public tracks are status approved/live only"
+  ],
+  "assumptions": [
+    "DB provider may still be stubbed locally"
+  ],
+  "verification_state": {
+    "required": [
+      "pnpm --filter @echovault/web typecheck",
+      "pnpm --filter @echovault/web test",
+      "pnpm verify:static"
+    ],
+    "status": "not_run"
+  },
+  "repo_health": {
+    "ownership_fit": "route thin; repository owns data access; domain owns rules",
+    "duplication_risk": "low",
+    "boundary_violation_risk": "low"
+  },
+  "recommended_next_action": "implement public catalog adapter and response mapper",
+  "fallback_action": "return deterministic fixture through repository stub if DB is unavailable"
+}

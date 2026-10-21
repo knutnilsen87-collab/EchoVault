@@ -1,0 +1,240 @@
+openapi: 3.0.3
+info:
+  title: EchoVault API
+  version: 0.1.0
+  description: MVP API contract for EchoVault curated AI/hybrid music licensing.
+servers:
+  - url: https://api.echovault.example.com/api/v1
+    description: Production placeholder
+  - url: http://localhost:3000/api/v1
+    description: Local development
+tags:
+  - name: Vault
+  - name: Checkout
+  - name: Licenses
+  - name: Artist
+  - name: Admin
+  - name: Internal
+  - name: Webhooks
+paths:
+  /vault/tracks:
+    get:
+      tags: [Vault]
+      summary: List approved tracks
+      responses:
+        "200":
+          description: Approved track list
+  /vault/tracks/{trackId}:
+    get:
+      tags: [Vault]
+      summary: Get approved track detail
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: Track detail
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /checkout/session:
+    post:
+      tags: [Checkout]
+      summary: Create Stripe Checkout session
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [track_id, tier, terms_accepted]
+              properties:
+                track_id: { type: string, format: uuid }
+                tier: { $ref: "#/components/schemas/LicenseTier" }
+                terms_accepted: { type: boolean }
+                whitelisted_url: { type: string, nullable: true }
+                project_or_client_name: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Stripe session URL
+        "409":
+          description: Track unavailable or terms not accepted
+  /licenses:
+    get:
+      tags: [Licenses]
+      summary: List current buyer licenses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Licenses
+  /licenses/{licenseId}:
+    get:
+      tags: [Licenses]
+      summary: Get license detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LicenseId"
+      responses:
+        "200":
+          description: License detail
+  /licenses/{licenseId}/download-link:
+    post:
+      tags: [Licenses]
+      summary: Create expiring signed URL for purchased high-res file
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LicenseId"
+      responses:
+        "200":
+          description: Signed download URL
+  /certificates/{certificateId}:
+    get:
+      tags: [Licenses]
+      summary: Get certificate verification metadata
+      parameters:
+        - in: path
+          name: certificateId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Certificate metadata
+  /artist/tracks:
+    get:
+      tags: [Artist]
+      summary: List artist tracks
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Artist tracks
+    post:
+      tags: [Artist]
+      summary: Create track draft
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Draft created
+  /artist/tracks/{trackId}/files:
+    post:
+      tags: [Artist]
+      summary: Register uploaded file or request upload URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: File registered / upload URL returned
+  /artist/tracks/{trackId}/poe:
+    put:
+      tags: [Artist]
+      summary: Save Proof of Effort
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: PoE saved
+  /artist/tracks/{trackId}/submit:
+    post:
+      tags: [Artist]
+      summary: Submit track for analysis/review
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: Track submitted
+  /admin/review-queue:
+    get:
+      tags: [Admin]
+      summary: List tracks needing human review
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Review queue
+  /admin/tracks/{trackId}/approve:
+    post:
+      tags: [Admin]
+      summary: Approve track
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: Track approved
+  /admin/tracks/{trackId}/reject:
+    post:
+      tags: [Admin]
+      summary: Reject track
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: Track rejected
+  /admin/tracks/{trackId}/request-changes:
+    post:
+      tags: [Admin]
+      summary: Request artist changes
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TrackId"
+      responses:
+        "200":
+          description: Changes requested
+  /internal/analysis/callback:
+    post:
+      tags: [Internal]
+      summary: EchoScore worker callback
+      security:
+        - serviceToken: []
+      responses:
+        "200":
+          description: Analysis accepted
+  /webhooks/stripe:
+    post:
+      tags: [Webhooks]
+      summary: Stripe webhook endpoint
+      description: Must verify Stripe signature and create purchased license idempotently.
+      responses:
+        "200":
+          description: Event processed
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+  parameters:
+    TrackId:
+      in: path
+      name: trackId
+      required: true
+      schema: { type: string, format: uuid }
+    LicenseId:
+      in: path
+      name: licenseId
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    NotFound:
+      description: Not found
+  schemas:
+    LicenseTier:
+      type: string
+      enum: [creator, pro, agency]
