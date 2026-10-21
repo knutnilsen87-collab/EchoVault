@@ -40,7 +40,7 @@ Postgres + EchoScore in Docker, migrates, seeds demo data, opens the web app and
 and opens the browser). `stop.bat` stops the Docker services.
 
 Manual setup — requirements: Node 22, pnpm 10, Docker (or a local Postgres 16 + Python 3.11 for EchoScore).
-ffmpeg is bundled via `ffmpeg-static` (override with `FFMPEG_PATH`).
+ffmpeg on PATH (or `FFMPEG_PATH`) is needed for MP3 previews; without it everything else works.
 
 ```bash
 cp .env.example apps/web/.env.local     # stub mode: no real Stripe/R2 needed

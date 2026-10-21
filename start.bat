@@ -2,14 +2,16 @@
 rem ============================================================================
 rem  EchoVault - start everything locally (Windows). Double-click to run.
 rem  Starts: Postgres + EchoScore (Docker), web app (localhost:3000) and worker.
-rem  Safe to run again: steps that are already done are skipped or are no-ops.
+rem  Safe to run again. Full output of every step goes to start.log.
 rem ============================================================================
 setlocal
 title EchoVault - starter
 cd /d "%~dp0"
+set "LOG=%~dp0start.log"
+echo ==== %date% %time% ==== > "%LOG%"
 
 echo.
-echo  ECHOVAULT  -  lokal oppstart
+echo  ECHOVAULT  -  lokal oppstart   (logg: start.log)
 echo  ---------------------------------------------
 echo.
 
@@ -24,19 +26,41 @@ if not errorlevel 1 (
 )
 
 rem ---------- 1. Forutsetninger ----------
+set "STEP=forutsetninger"
 where git >nul 2>nul || goto no_git
 where node >nul 2>nul || goto no_node
 for /f "tokens=1 delims=v." %%v in ('node -v') do set NODE_MAJOR=%%v
 if %NODE_MAJOR% LSS 22 goto old_node
 where docker >nul 2>nul || goto no_docker
+node -v >> "%LOG%" 2>&1
 
 where pnpm >nul 2>nul
 if errorlevel 1 (
   echo [..] Installerer pnpm ...
-  call npm install -g pnpm@10 || goto fail
+  call npm install -g pnpm@10 >> "%LOG%" 2>&1 || goto fail
 )
+echo [ok] Git, Node og pnpm funnet
+
+rem ffmpeg lager MP3-forhandslytting. Valgfritt: uten ffmpeg virker alt annet.
+set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%PATH%"
+where ffmpeg >nul 2>nul
+if not errorlevel 1 goto ffmpeg_ok
+where winget >nul 2>nul
+if errorlevel 1 goto ffmpeg_missing
+echo [..] Installerer ffmpeg med winget - for forhandslytting ...
+winget install -e --id Gyan.FFmpeg --silent --accept-package-agreements --accept-source-agreements >> "%LOG%" 2>&1
+where ffmpeg >nul 2>nul
+if errorlevel 1 goto ffmpeg_missing
+:ffmpeg_ok
+echo [ok] ffmpeg funnet
+goto ffmpeg_done
+:ffmpeg_missing
+echo [!] ffmpeg mangler - appen starter, men uten forhandslytting av lyd.
+echo     Installer senere med:  winget install Gyan.FFmpeg
+:ffmpeg_done
 
 rem ---------- 2. Docker Desktop ----------
+set "STEP=Docker Desktop"
 docker info >nul 2>nul
 if not errorlevel 1 goto docker_ok
 echo [..] Starter Docker Desktop ...
@@ -59,14 +83,19 @@ if not exist "apps\web\.env.local" (
 )
 
 rem ---------- 4. Database + EchoScore ----------
+set "STEP=Docker compose - Postgres og EchoScore"
 echo [..] Starter Postgres og EchoScore i Docker - forste gang tar dette noen minutter ...
-docker compose up -d --build || goto fail
+docker compose up -d --build >> "%LOG%" 2>&1 || goto fail
+echo [ok] Docker-tjenestene er startet
 
 rem ---------- 5. Avhengigheter ----------
-echo [..] Installerer pakker ...
-call pnpm install || goto fail
+set "STEP=pnpm install"
+echo [..] Installerer pakker - forste gang tar dette noen minutter ...
+call pnpm install --reporter=append-only >> "%LOG%" 2>&1 || goto fail
+echo [ok] Pakker installert
 
 rem ---------- 6. Vent paa database, migrer ----------
+set "STEP=database"
 set /a TRIES=0
 :wait_pg
 docker compose exec -T postgres pg_isready -U echovault >nul 2>nul
@@ -77,22 +106,27 @@ timeout /t 2 /nobreak >nul
 goto wait_pg
 :pg_ok
 echo [ok] Postgres er klar
-call pnpm db:migrate || goto fail
+call pnpm db:migrate >> "%LOG%" 2>&1 || goto fail
+echo [ok] Database oppdatert
 
 rem ---------- 7. Vent paa EchoScore, legg inn demo-data ----------
+set "STEP=demo-data"
 set /a TRIES=0
 :wait_es
 curl -s -f -o nul http://localhost:8001/health
 if not errorlevel 1 goto es_ok
 set /a TRIES+=1
-if %TRIES% GEQ 60 goto es_timeout
+if %TRIES% GEQ 90 goto es_timeout
 timeout /t 2 /nobreak >nul
 goto wait_es
 :es_ok
 echo [ok] EchoScore er klar
-call pnpm db:seed --demo || goto fail
+echo [..] Legger inn testkontoer og demo-laater ...
+call pnpm db:seed --demo >> "%LOG%" 2>&1 || goto fail
+echo [ok] Demo-data klar
 
 rem ---------- 8. Start web + worker i egne vinduer ----------
+set "STEP=web-app"
 echo [..] Starter worker og web-app i egne vinduer ...
 start "EchoVault worker" cmd /k "pnpm worker"
 start "EchoVault web" cmd /k "pnpm dev"
@@ -103,7 +137,7 @@ timeout /t 2 /nobreak >nul
 curl -s -f -o nul http://localhost:3000/api/v1/health
 if not errorlevel 1 goto web_ok
 set /a TRIES+=1
-if %TRIES% GEQ 90 goto web_timeout
+if %TRIES% GEQ 120 goto web_timeout
 goto wait_web
 :web_ok
 start "" http://localhost:3000
@@ -129,33 +163,40 @@ exit /b 0
 rem ---------- Feilmeldinger ----------
 :no_git
 echo [X] Git mangler. Installer: winget install Git.Git   - eller https://git-scm.com
-goto fail
+goto fail_plain
 :no_node
 echo [X] Node.js mangler. Installer Node 22 LTS: winget install OpenJS.NodeJS.LTS
-goto fail
+goto fail_plain
 :old_node
 echo [X] Node.js %NODE_MAJOR% er for gammel - trenger 22 eller nyere: winget install OpenJS.NodeJS.LTS
-goto fail
+goto fail_plain
 :no_docker
 echo [X] Docker mangler. Installer Docker Desktop: winget install Docker.DockerDesktop
-goto fail
+goto fail_plain
 :no_curl
 echo [X] curl mangler - krever Windows 10 1803 eller nyere.
-goto fail
+goto fail_plain
 :docker_timeout
 echo [X] Docker Desktop startet ikke. Start det manuelt og kjor start.bat igjen.
-goto fail
+goto fail_plain
 :pg_timeout
 echo [X] Postgres ble ikke klar. Se: docker compose logs postgres
-goto fail
+goto fail_plain
 :es_timeout
 echo [X] EchoScore ble ikke klar. Se: docker compose logs echoscore
-goto fail
+goto fail_plain
 :web_timeout
 echo [X] Web-appen svarte ikke paa localhost:3000. Se vinduet "EchoVault web".
-goto fail
+goto fail_plain
+
 :fail
 echo.
-echo Oppstarten stoppet. Se feilmeldingen over.
+echo [X] Steget "%STEP%" feilet. Siste linjer fra start.log:
+echo ---------------------------------------------
+powershell -NoProfile -Command "Get-Content -Path '%LOG%' -Tail 25"
+echo ---------------------------------------------
+:fail_plain
+echo.
+echo Oppstarten stoppet. Hele loggen ligger i start.log.
 pause
 exit /b 1

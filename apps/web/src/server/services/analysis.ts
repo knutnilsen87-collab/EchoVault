@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -12,19 +12,11 @@ import { storage } from "../storage";
 const run = promisify(execFile);
 
 /**
- * ffmpeg binary: FFMPEG_PATH, else the bundled ffmpeg-static binary (so Windows dev machines
- * need no separate install), else `ffmpeg` on PATH.
+ * ffmpeg binary: FFMPEG_PATH, else `ffmpeg` on PATH. (No npm-bundled binary: its install-time
+ * download hung `pnpm install` on Windows.) Without ffmpeg, tracks simply have no MP3 preview.
  */
 async function ffmpegBinary(): Promise<string> {
-  if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
-  try {
-    const mod = (await import("ffmpeg-static")) as unknown as { default?: string | null };
-    const bundled = mod.default;
-    if (bundled && (await stat(bundled).then(() => true, () => false))) return bundled;
-  } catch {
-    /* package or binary missing */
-  }
-  return "ffmpeg";
+  return process.env.FFMPEG_PATH || "ffmpeg";
 }
 
 export class PermanentJobError extends Error {}
