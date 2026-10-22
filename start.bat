@@ -1,7 +1,7 @@
 @echo off
 rem ============================================================================
 rem  EchoVault - start everything locally (Windows). Double-click to run.
-rem  Starts: Postgres + EchoScore (Docker), web app (localhost:3000) and worker.
+rem  Starts: Postgres + EchoScore (Docker), web app (localhost:4747) and worker.
 rem  Safe to run again. Full output of every step goes to start.log.
 rem ============================================================================
 setlocal
@@ -17,10 +17,10 @@ echo.
 
 rem ---------- 0. Kjorer den allerede? ----------
 where curl >nul 2>nul || goto no_curl
-curl -s -f -o nul http://localhost:3000/api/v1/health
+curl -s -f -o nul http://localhost:4747/api/v1/health
 if not errorlevel 1 (
   echo [ok] EchoVault kjorer allerede - apner nettleseren.
-  start "" http://localhost:3000
+  start "" http://localhost:4747
   timeout /t 3 /nobreak >nul
   exit /b 0
 )
@@ -113,7 +113,7 @@ rem ---------- 7. Vent paa EchoScore, legg inn demo-data ----------
 set "STEP=demo-data"
 set /a TRIES=0
 :wait_es
-curl -s -f -o nul http://localhost:8001/health
+curl -s -f -o nul http://localhost:4748/health
 if not errorlevel 1 goto es_ok
 set /a TRIES+=1
 if %TRIES% GEQ 90 goto es_timeout
@@ -127,6 +127,8 @@ echo [ok] Demo-data klar
 
 rem ---------- 8. Start web + worker i egne vinduer ----------
 set "STEP=web-app"
+netstat -ano | findstr /R /C:":4747 .*LISTENING" >nul
+if not errorlevel 1 goto port_busy
 echo [..] Starter worker og web-app i egne vinduer ...
 start "EchoVault worker" cmd /k "pnpm worker"
 start "EchoVault web" cmd /k "pnpm dev"
@@ -134,17 +136,17 @@ start "EchoVault web" cmd /k "pnpm dev"
 set /a TRIES=0
 :wait_web
 timeout /t 2 /nobreak >nul
-curl -s -f -o nul http://localhost:3000/api/v1/health
+curl -s -f -o nul http://localhost:4747/api/v1/health
 if not errorlevel 1 goto web_ok
 set /a TRIES+=1
 if %TRIES% GEQ 120 goto web_timeout
 goto wait_web
 :web_ok
-start "" http://localhost:3000
+start "" http://localhost:4747
 
 echo.
 echo  ---------------------------------------------
-echo  EchoVault kjorer:  http://localhost:3000
+echo  EchoVault kjorer:  http://localhost:4747
 echo.
 echo  Testkontoer - passord: echovault-dev-password
 echo    kjoper    buyer@echovault.local
@@ -185,8 +187,12 @@ goto fail_plain
 :es_timeout
 echo [X] EchoScore ble ikke klar. Se: docker compose logs echoscore
 goto fail_plain
+:port_busy
+echo [X] Port 4747 brukes allerede av et annet program. Lukk det, eller endre porten i
+echo     apps\web\package.json og NEXT_PUBLIC_APP_URL i apps\web\.env.local.
+goto fail_plain
 :web_timeout
-echo [X] Web-appen svarte ikke paa localhost:3000. Se vinduet "EchoVault web".
+echo [X] Web-appen svarte ikke paa localhost:4747. Se vinduet "EchoVault web".
 goto fail_plain
 
 :fail

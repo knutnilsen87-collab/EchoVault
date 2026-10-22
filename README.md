@@ -44,11 +44,11 @@ ffmpeg on PATH (or `FFMPEG_PATH`) is needed for MP3 previews; without it everyth
 
 ```bash
 cp .env.example apps/web/.env.local     # stub mode: no real Stripe/R2 needed
-docker compose up -d                      # Postgres :54329 + EchoScore :8001
+docker compose up -d                      # Postgres :54329 + EchoScore :4748
 pnpm install
 pnpm db:migrate
 pnpm db:seed --demo                       # staff/demo accounts + 3 synthetic tracks through the real pipeline
-pnpm dev                                  # http://localhost:3000
+pnpm dev                                  # http://localhost:4747
 pnpm worker                               # second terminal: EchoScore jobs, previews, certificates
 ```
 
@@ -57,7 +57,7 @@ Seeded accounts (password `echovault-dev-password`): `admin@`, `reviewer@`, `art
 ### Sign in with Google (optional)
 
 1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → *Create credentials* → *OAuth client ID* → **Web application**.
-2. Authorized redirect URI: `http://localhost:3000/api/v1/auth/google/callback` (add the production URL later).
+2. Authorized redirect URI: `http://localhost:4747/api/v1/auth/google/callback` (add the production URL later).
 3. If asked, configure the consent screen (External, Testing) and add your own Google account as a test user.
 4. Put the values in `apps/web/.env.local` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and restart.
 

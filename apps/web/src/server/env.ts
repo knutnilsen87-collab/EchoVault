@@ -3,7 +3,7 @@ import { z } from "zod";
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   ECHOVAULT_PROVIDER_MODE: z.enum(["stub", "live"]).default("stub"),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:4747"),
   DATABASE_URL: z.string().min(1).default("postgresql://echovault:echovault@localhost:5432/echovault"),
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   STRIPE_SECRET_KEY: z.string().optional(),
@@ -15,7 +15,7 @@ const EnvSchema = z.object({
   S3_ENDPOINT: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
-  ECHOSCORE_SERVICE_URL: z.string().url().default("http://localhost:8001"),
+  ECHOSCORE_SERVICE_URL: z.string().url().default("http://localhost:4748"),
   ECHOSCORE_SERVICE_TOKEN: z.string().min(8).default("change-me-service-token"),
   /** Stub checkout page/endpoint. On by default outside production; must be opted into for prod-built demos/CI. */
   ECHOVAULT_ALLOW_STUB_CHECKOUT: z.enum(["true", "false"]).optional(),

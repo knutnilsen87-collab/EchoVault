@@ -72,8 +72,8 @@ jobs:
       ECHOVAULT_PROVIDER_MODE: stub
       ECHOVAULT_ALLOW_STUB_CHECKOUT: "true"
       STRIPE_WEBHOOK_SECRET: whsec_ci
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      ECHOSCORE_SERVICE_URL: http://localhost:8001
+      NEXT_PUBLIC_APP_URL: http://localhost:4747
+      ECHOSCORE_SERVICE_URL: http://localhost:4748
       ECHOSCORE_SERVICE_TOKEN: ci-service-token
     steps:
       - uses: actions/checkout@v4
@@ -92,14 +92,14 @@ jobs:
       - run: pnpm --filter @echovault/web exec playwright install --with-deps chromium
       - name: Start EchoScore
         working-directory: services/echoscore
-        run: nohup python -m uvicorn app.main:app --port 8001 > /tmp/echoscore.log 2>&1 &
+        run: nohup python -m uvicorn app.main:app --port 4748 > /tmp/echoscore.log 2>&1 &
       - run: pnpm db:migrate && pnpm db:seed --demo
       - run: pnpm build
       - name: Start web + worker
         run: |
           nohup pnpm --filter @echovault/web start > /tmp/web.log 2>&1 &
           nohup pnpm worker > /tmp/worker.log 2>&1 &
-          npx wait-on http://localhost:3000/api/v1/health --timeout 60000
+          npx wait-on http://localhost:4747/api/v1/health --timeout 60000
       - name: Playwright
         run: pnpm --filter @echovault/web exec playwright test
       - name: Logs and traces on failure
