@@ -22,6 +22,16 @@ Buyer: catalog + preview player → tier + terms clickwrap → Stripe Checkout �
 Support: buyer reports a claim → reviewer suspends track (new sales/previews stop, existing licenses stay)
 ```
 
+## Pages
+
+| Area | Pages |
+|---|---|
+| Public | `/` catalog with filters · `/tracks/[id]` · `/artists/[id]` · `/pricing` · `/support` · `/legal/terms` · `/legal/privacy` · `/verify/[certificateId]` |
+| Account | `/login` · `/register` (email or Google) · `/settings` (profile, bio, password) |
+| Buyer | `/dashboard` · `/licenses/[id]` (download, certificate, report a claim) · `/checkout/success` |
+| Artist | `/artist` · `/artist/tracks/new` · `/artist/tracks/[id]` (WAV, cover art, PoE, submit) · `/artist/earnings` |
+| Admin | `/admin` review queue · `/admin/tracks/[id]` · `/admin/disputes` (+ evidence pack) · `/admin/licenses` · `/admin/audit` · `/admin/terms` (versioning) · `/admin/users` (roles) |
+
 ## Layout
 
 | Path | What |

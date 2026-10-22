@@ -75,7 +75,8 @@ export async function createDownloadLink(user: SessionUser, licenseId: string, r
   });
   await withTransaction(async (tx) => {
     const delivered = await tx.query("SELECT 1 FROM license_events WHERE license_id = $1 AND type = 'delivered'", [licenseId]);
-    if (delivered.rowCount === 0) await tx.query("INSERT INTO license_events (license_id, type) VALUES ($1, 'delivered')", [licenseId]);
+    // Only the buyer's own download counts as delivery; staff downloads are audited but don't change status.
+    if (delivered.rowCount === 0 && license.buyer_id === user.id) await tx.query("INSERT INTO license_events (license_id, type) VALUES ($1, 'delivered')", [licenseId]);
     await writeAudit(tx, { actorUserId: user.id, entityType: "purchased_license", entityId: licenseId, action: "license.download_link_created", metadata: { file_id: file.id, expires_at: signed.expiresAt }, requestId });
   });
   return { file_id: file.id, url: signed.url, expires_at: signed.expiresAt, file_type: "audio/wav", license_id: license.id, track_id: license.track_id };

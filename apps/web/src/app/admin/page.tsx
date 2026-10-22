@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { REVIEWER_ROLES } from "@echovault/domain";
+import { redirect } from "next/navigation";
 import { EchoScoreBadge, StatusBadge } from "@/components/ui/badges";
 import { Panel } from "@/components/ui/primitives";
 import { dateTime } from "@/lib/format";
@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Review queue" };
 
 export default async function AdminPage() {
-  await pageUser(REVIEWER_ROLES, "/admin");
+  const user = await pageUser(["reviewer", "support", "finance"], "/admin");
+  if (user.role === "support") redirect("/admin/disputes");
+  if (user.role === "finance") redirect("/admin/licenses");
   const [queue, disputes] = await Promise.all([reviewQueue(), listDisputes()]);
   const open = (disputes as { status: string }[]).filter((d) => ["open", "investigating", "escalated"].includes(d.status));
   return (
@@ -38,7 +40,7 @@ export default async function AdminPage() {
           </div>
         )}
       </Panel>
-      <Panel title={`Disputes · ${open.length} open`}>
+      <Panel title={`Disputes · ${open.length} open`} aside={<Link href="/admin/disputes" className="text-xs text-echo-muted hover:text-white">All disputes →</Link>}>
         {disputes.length === 0 ? (
           <p className="text-sm text-echo-muted">No disputes.</p>
         ) : (
@@ -46,7 +48,7 @@ export default async function AdminPage() {
             {(disputes as { id: string; status: string; reason_category: string; claim_summary: string; track_id: string; track_title: string; track_status: string; created_at: string; opened_by: string }[]).map((d) => (
               <li key={d.id} className="border-t border-echo-border px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <Link href={`/admin/tracks/${d.track_id}`} className="font-medium hover:underline">
+                  <Link href={`/admin/disputes/${d.id}`} className="font-medium hover:underline">
                     {d.track_title}
                   </Link>
                   <StatusBadge status={d.track_status} />

@@ -4,17 +4,23 @@ import type { PublicTrack } from "@/server/services/catalog";
 import { duration } from "@/lib/format";
 import { EchoScoreBadge, PoeBadge } from "../ui/badges";
 import { PlayButton } from "./player";
+import { TrackCover } from "./track-cover";
 
 /** Editorial data grid row (UI_Specification: play, title/artist, genre/mood, BPM, duration, ES, PoE, from-price, CTA). */
 export function TrackDataRow({ track }: { track: PublicTrack }) {
   return (
     <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-echo-border bg-echo-dark px-4 py-3 last:border-0 md:grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_4rem_3.5rem_auto_auto_auto] md:gap-5">
       <PlayButton disabled={!track.has_preview} track={{ id: track.id, title: track.title, artist: track.artist_name, src: `/api/v1/vault/tracks/${track.id}/preview` }} />
-      <div className="min-w-0">
-        <Link href={`/tracks/${track.id}`} className="block truncate text-sm font-medium text-white hover:underline">
-          {track.title}
-        </Link>
-        <div className="truncate text-xs text-echo-muted">{track.artist_name}</div>
+      <div className="flex min-w-0 items-center gap-3">
+        <TrackCover trackId={track.id} title={track.title} hasArtwork={track.has_artwork} size={40} />
+        <div className="min-w-0">
+          <Link href={`/tracks/${track.id}`} className="block truncate text-sm font-medium text-white hover:underline">
+            {track.title}
+          </Link>
+          <Link href={`/artists/${track.artist_id}`} className="block truncate text-xs text-echo-muted hover:text-white">
+            {track.artist_name}
+          </Link>
+        </div>
       </div>
       <div className="hidden truncate text-xs text-echo-muted md:block">
         {track.genre}

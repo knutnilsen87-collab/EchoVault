@@ -11,7 +11,9 @@ export const GET = route(async (request, ctx) => {
     genre: url.searchParams.get("genre") || undefined,
     mood: url.searchParams.get("mood") || undefined,
     bpmMin: num("bpm_min"),
-    bpmMax: num("bpm_max")
+    bpmMax: num("bpm_max"),
+    maxDurationSeconds: num("max_duration"),
+    sort: (["newest", "bpm_asc", "bpm_desc", "shortest"] as const).find((x) => x === url.searchParams.get("sort"))
   });
   const terms = await getActiveTerms();
   return ok({ tracks, license_prices: terms.map((t) => ({ tier: t.tier, price_cents: t.price_cents, currency: t.currency, terms_version: t.version })) }, ctx);

@@ -7,7 +7,9 @@ import { Alert, DataRow, Panel } from "@/components/ui/primitives";
 import { dateTime, duration } from "@/lib/format";
 import { currentUser } from "@/lib/session";
 import { AppError } from "@/server/errors";
-import { getActiveTerms, getPublicTrack } from "@/server/services/catalog";
+import { TrackCover } from "@/components/catalog/track-cover";
+import { TrackDataRow } from "@/components/catalog/track-data-row";
+import { getActiveTerms, getPublicTrack, similarTracks } from "@/server/services/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,7 @@ export default async function TrackPage({ params, searchParams }: { params: Prom
     throw e;
   }
   const { track, tiers } = data;
-  const [user, terms] = await Promise.all([currentUser(), getActiveTerms()]);
+  const [user, terms, similar] = await Promise.all([currentUser(), getActiveTerms(), similarTracks(track.id)]);
   const es = track.echoscore;
   const poe = track.poe;
 
@@ -33,15 +35,20 @@ export default async function TrackPage({ params, searchParams }: { params: Prom
         <Link href="/" className="font-mono text-xs text-echo-muted hover:text-white">
           ← CATALOG
         </Link>
-        <div className="flex items-start gap-4">
+        <div className="flex flex-wrap items-end gap-5">
+          <TrackCover trackId={track.id} title={track.title} hasArtwork={track.has_artwork} size={140} className="rounded-xl" />
+          <div className="flex items-start gap-4">
           <PlayButton disabled={!track.has_preview} track={{ id: track.id, title: track.title, artist: track.artist_name, src: `/api/v1/vault/tracks/${track.id}/preview` }} />
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">{track.title}</h1>
-            <p className="mt-1 text-echo-muted">{track.artist_name}</p>
+            <Link href={`/artists/${track.artist_id}`} className="mt-1 inline-block text-echo-muted hover:text-white">
+              {track.artist_name}
+            </Link>
             <div className="mt-3 flex flex-wrap gap-2">
               <EchoScoreBadge score={es?.score} pass={es?.pass} />
               <PoeBadge mode={poe?.creation_mode} />
             </div>
+          </div>
           </div>
         </div>
         {sp.checkout === "cancelled" ? <Alert>Checkout was cancelled. You have not been charged.</Alert> : null}
@@ -79,6 +86,19 @@ export default async function TrackPage({ params, searchParams }: { params: Prom
             clearance; they exist so you know how the track was made and who stands behind it.
           </p>
         </Panel>
+
+        {similar.length ? (
+          <section aria-labelledby="similar-heading">
+            <h2 id="similar-heading" className="mb-3 font-mono text-xs uppercase tracking-[0.2em] text-echo-muted">
+              Similar tracks
+            </h2>
+            <div className="overflow-hidden rounded-xl border border-echo-border">
+              {similar.map((t) => (
+                <TrackDataRow key={t.id} track={t} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
@@ -100,7 +120,12 @@ export default async function TrackPage({ params, searchParams }: { params: Prom
             signedIn={Boolean(user)}
             tiers={tiers.map((t) => ({ ...t, terms_md: terms.find((x) => x.id === t.terms_version_id)?.terms_md ?? "" }))}
           />
-          <p className="mt-3 text-center text-xs text-echo-muted">One-off payment · certificate issued instantly</p>
+          <p className="mt-3 text-center text-xs text-echo-muted">
+            One-off payment · certificate issued instantly ·{" "}
+            <Link href="/pricing" className="underline hover:text-white">
+              compare licenses
+            </Link>
+          </p>
         </Panel>
       </aside>
     </main>

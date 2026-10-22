@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PlayerProvider } from "@/components/catalog/player";
+import { SiteFooter } from "@/components/ui/site-footer";
 import { SiteHeader } from "@/components/ui/site-header";
 import { currentUser } from "@/lib/session";
 import "./globals.css";
@@ -16,7 +17,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-echo-dark font-sans text-white antialiased">
         <PlayerProvider>
           <SiteHeader user={user} />
-          <div className="pb-24">{children}</div>
+          <div className="pb-24">
+            {children}
+            <SiteFooter />
+          </div>
         </PlayerProvider>
       </body>
     </html>

@@ -93,6 +93,47 @@ export function WavUpload({ trackId, current }: { trackId: string; current: { or
   );
 }
 
+export function ArtworkUpload({ trackId, hasArtwork, disabled }: { trackId: string; hasArtwork: boolean; disabled: boolean }) {
+  const [state, setState] = React.useState<{ busy: boolean; error?: string }>({ busy: false });
+  const [version, setVersion] = React.useState(0);
+  return (
+    <div className="flex flex-wrap items-center gap-5">
+      {hasArtwork || version > 0 ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`/api/v1/vault/tracks/${trackId}/artwork?v=${version}`} alt="Current cover" width={96} height={96} className="h-24 w-24 rounded-lg border border-echo-border object-cover" />
+      ) : (
+        <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-dashed border-echo-border font-mono text-[11px] text-echo-muted">NO COVER</div>
+      )}
+      <div className="min-w-0 flex-1 space-y-2">
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-label="Upload cover art"
+          disabled={disabled || state.busy}
+          className="block w-full text-sm text-echo-muted file:mr-4 file:rounded-md file:border file:border-echo-border file:bg-echo-surface file:px-4 file:py-2 file:text-white"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setState({ busy: true });
+            const form = new FormData();
+            form.set("kind", "artwork_image");
+            form.set("file", file);
+            try {
+              await api(`/api/v1/artist/tracks/${trackId}/files`, { method: "POST", body: form });
+              setVersion((v) => v + 1);
+              setState({ busy: false });
+            } catch (err) {
+              setState({ busy: false, error: describeError(err) });
+            }
+          }}
+        />
+        <p className="text-xs text-echo-muted">Square JPEG, PNG or WebP, max 10 MB. Shown in the catalog once the track is approved.</p>
+        {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+      </div>
+    </div>
+  );
+}
+
 type Poe = {
   creation_mode: string;
   ai_tools_used: string[];

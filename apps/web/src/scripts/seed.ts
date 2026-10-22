@@ -11,7 +11,7 @@ import { hashPassword, type SessionUser } from "../server/auth";
 import { createDraft, saveProofOfEffort, submitTrack, uploadTrackFile } from "../server/services/artist";
 import { approveTrack } from "../server/services/review";
 import { drainJobs } from "../server/worker";
-import { musicWav } from "./synth";
+import { musicWav, pngImage } from "./synth";
 
 const PASSWORD = process.env.SEED_PASSWORD ?? "echovault-dev-password";
 
@@ -24,6 +24,26 @@ async function user(email: string, role: string, display: string, artist?: strin
   return row!;
 }
 
+const DEMO_BIO = "Demo artist for local testing. All audio and artwork is generated in code — no third-party material.";
+
+/** Older demo data had no cover art; add it directly (bypasses the artist-edit lock, seed only). */
+async function backfillArtwork(tracks: { id: string; title: string }[]) {
+  const { storage } = await import("../server/storage");
+  const { createHash } = await import("node:crypto");
+  for (const [i, t] of tracks.entries()) {
+    const has = await queryOne("SELECT 1 FROM track_files WHERE track_id = $1 AND kind = 'artwork_image'", [t.id]);
+    if (has) continue;
+    const png = pngImage(512, i + 3);
+    const key = `tracks/${t.id}/artwork_image/${crypto.randomUUID()}.png`;
+    await (await storage()).put(key, png, "image/png");
+    await query(
+      "INSERT INTO track_files (track_id, kind, storage_key, original_filename, mime_type, size_bytes, checksum_sha256) VALUES ($1, 'artwork_image', $2, 'cover.png', 'image/png', $3, $4)",
+      [t.id, key, png.byteLength, createHash("sha256").update(png).digest("hex")]
+    );
+    console.log(`added cover art to ${t.title}`);
+  }
+}
+
 async function main() {
   const admin = await user("admin@echovault.local", "admin", "Admin");
   const reviewer = await user("reviewer@echovault.local", "reviewer", "Reviewer");
@@ -33,8 +53,10 @@ async function main() {
   for (const e of ["admin", "reviewer", "artist", "buyer"]) console.log(`  ${e}@echovault.local`);
 
   if (!process.argv.includes("--demo")) return;
-  const existing = await query("SELECT 1 FROM tracks WHERE artist_id = $1", [artist.id]);
+  const existing = await query<{ id: string; title: string; status: string }>("SELECT id, title, status FROM tracks WHERE artist_id = $1", [artist.id]);
   if (existing.length) {
+    await query("UPDATE users SET bio = COALESCE(bio, $2) WHERE id = $1", [artist.id, DEMO_BIO]);
+    await backfillArtwork(existing);
     console.log("demo tracks already exist — skipping");
     return;
   }
@@ -47,6 +69,7 @@ async function main() {
   for (const d of demos) {
     const track = await createDraft(artist, { title: d.title, genre: d.genre, mood: d.mood, bpm: d.bpm, description: `Synthetic demo track (${d.genre.toLowerCase()}) generated for local testing.` }, rid);
     await uploadTrackFile(artist, track.id, { kind: "high_res_wav", bytes: musicWav(30, { root: d.root }), filename: `${d.title}.wav`, mimeType: "audio/wav" }, rid);
+    await uploadTrackFile(artist, track.id, { kind: "artwork_image", bytes: pngImage(512, demos.indexOf(d) + 3), filename: "cover.png", mimeType: "image/png" }, rid);
     await saveProofOfEffort(
       artist,
       track.id,
@@ -66,6 +89,7 @@ async function main() {
     await submitTrack(artist, track.id, rid);
     console.log(`submitted ${d.title}`);
   }
+  await query("UPDATE users SET bio = COALESCE(bio, $2) WHERE id = $1", [artist.id, DEMO_BIO]);
   await drainJobs();
   const pending = await query<{ id: string; title: string; status: string }>("SELECT id, title, status FROM tracks WHERE artist_id = $1", [artist.id]);
   for (const t of pending) {

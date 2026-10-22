@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isArtistEditable } from "@echovault/domain";
-import { PoeForm, SubmitTrackButton, WavUpload } from "@/components/forms/artist-forms";
+import { ArtworkUpload, PoeForm, SubmitTrackButton, WavUpload } from "@/components/forms/artist-forms";
 import { EchoScoreBadge, StatusBadge } from "@/components/ui/badges";
 import { Alert, DataRow, Panel } from "@/components/ui/primitives";
 import { dateTime, duration } from "@/lib/format";
@@ -46,6 +46,9 @@ export default async function ArtistTrackPage({ params }: { params: Promise<{ tr
         <Panel title="1 · Master file">
           <WavUpload trackId={track.id} current={editable ? wav : null} />
           {!editable && wav ? <p className="font-mono text-xs text-echo-muted">{wav.original_filename} · locked while in review</p> : null}
+        </Panel>
+        <Panel title="Cover art (optional)">
+          <ArtworkUpload trackId={track.id} hasArtwork={files.some((f) => f.kind === "artwork_image")} disabled={!editable} />
         </Panel>
         <Panel title="2 · Proof of Effort" aside={<span className="font-mono text-[11px] text-[#b98cf0]">PROVENANCE</span>}>
           <PoeForm trackId={track.id} initial={poe} disabled={!editable} />
