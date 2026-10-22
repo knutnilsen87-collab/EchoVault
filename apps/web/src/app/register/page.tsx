@@ -3,12 +3,12 @@ import { AuthForm } from "@/components/forms/auth-form";
 
 export const metadata = { title: "Create account" };
 
-export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams;
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
+  const { next, error } = await searchParams;
   return (
     <main className="mx-auto max-w-sm px-4 py-16">
       <h1 className="mb-6 text-2xl font-semibold">Create account</h1>
-      <AuthForm mode="register" next={next ?? "/"} />
+      <AuthForm mode="register" next={next ?? "/"} initialError={error} />
       <p className="mt-6 text-sm text-echo-muted">
         Already have an account?{" "}
         <Link href="/login" className="text-white underline">

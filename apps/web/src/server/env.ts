@@ -18,7 +18,10 @@ const EnvSchema = z.object({
   ECHOSCORE_SERVICE_URL: z.string().url().default("http://localhost:8001"),
   ECHOSCORE_SERVICE_TOKEN: z.string().min(8).default("change-me-service-token"),
   /** Stub checkout page/endpoint. On by default outside production; must be opted into for prod-built demos/CI. */
-  ECHOVAULT_ALLOW_STUB_CHECKOUT: z.enum(["true", "false"]).optional()
+  ECHOVAULT_ALLOW_STUB_CHECKOUT: z.enum(["true", "false"]).optional(),
+  /** Sign in with Google (OAuth 2.0 / OpenID Connect). Both must be set to enable it. */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional()
 });
 
 export type EchoVaultEnv = z.infer<typeof EnvSchema>;
@@ -67,4 +70,9 @@ export function stubCheckoutEnabled(): boolean {
   if (e.ECHOVAULT_PROVIDER_MODE !== "stub") return false;
   if (e.ECHOVAULT_ALLOW_STUB_CHECKOUT) return e.ECHOVAULT_ALLOW_STUB_CHECKOUT === "true";
   return e.NODE_ENV !== "production";
+}
+
+export function googleEnabled(): boolean {
+  const e = env();
+  return Boolean(e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET);
 }

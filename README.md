@@ -54,6 +54,16 @@ pnpm worker                               # second terminal: EchoScore jobs, pre
 
 Seeded accounts (password `echovault-dev-password`): `admin@`, `reviewer@`, `artist@`, `buyer@echovault.local`.
 
+### Sign in with Google (optional)
+
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → *Create credentials* → *OAuth client ID* → **Web application**.
+2. Authorized redirect URI: `http://localhost:3000/api/v1/auth/google/callback` (add the production URL later).
+3. If asked, configure the consent screen (External, Testing) and add your own Google account as a test user.
+4. Put the values in `apps/web/.env.local` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and restart.
+
+New Google users become buyers (or artists when chosen on *Create account*); a verified Google email that
+matches an existing account is linked to it.
+
 In **stub mode** checkout redirects to `/dev/checkout/…`, which signs a Stripe-format event with
 `STRIPE_WEBHOOK_SECRET` and runs it through the real webhook handler. Nothing is charged.
 
