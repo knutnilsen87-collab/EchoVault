@@ -1,0 +1,49 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  /* Self-hosted (offline-safe) equivalents of next/font variables used by tailwind.config.ts */
+  --font-inter: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: #0A0A0A;
+  color: #FFFFFF;
+}
+
+body {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-size: 16px;
+}
+
+::selection {
+  background: rgba(0, 240, 255, 0.22);
+}
+
+:focus-visible {
+  outline: 2px solid #00F0FF;
+  outline-offset: 2px;
+}
+
+input, select, textarea {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

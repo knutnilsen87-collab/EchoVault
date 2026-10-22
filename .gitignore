@@ -14,3 +14,4 @@ __pycache__/
 .DS_Store
 playwright-report/
 test-results/
+start.log

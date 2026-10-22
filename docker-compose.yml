@@ -1,0 +1,27 @@
+# Local infrastructure. The web app and worker run on the host (`pnpm dev`, `pnpm worker`).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: echovault
+      POSTGRES_PASSWORD: echovault
+      POSTGRES_DB: echovault
+    ports:
+      - "54329:5432" # 54329 avoids clashing with a Postgres you may already run on 5432
+    volumes:
+      - echovault_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U echovault"]
+      interval: 5s
+      retries: 10
+
+  echoscore:
+    build:
+      context: ./services/echoscore
+    environment:
+      ECHOSCORE_SERVICE_TOKEN: ${ECHOSCORE_SERVICE_TOKEN:-change-me-service-token}
+    ports:
+      - "4748:8001" # 4748 on your machine; the service listens on 8001 inside the container
+
+volumes:
+  echovault_pg:

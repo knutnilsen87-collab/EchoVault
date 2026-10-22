@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/echovault_test
+
+jobs:
+  verify:
+    name: Typecheck, lint, unit + integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: echovault_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/echoscore/pyproject.toml
+      - name: System packages
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile
+          pip install -e "services/echoscore[test]"
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: EchoScore tests
+        working-directory: services/echoscore
+        run: python -m pytest -q
+      - name: Domain + web tests (real Postgres + real EchoScore)
+        run: pnpm test
+
+  e2e:
+    name: Browser end-to-end (stub providers)
+    runs-on: ubuntu-latest
+    needs: verify
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: echovault
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/echovault
+      AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
+      ECHOVAULT_PROVIDER_MODE: stub
+      ECHOVAULT_ALLOW_STUB_CHECKOUT: "true"
+      STRIPE_WEBHOOK_SECRET: whsec_ci
+      NEXT_PUBLIC_APP_URL: http://localhost:4747
+      ECHOSCORE_SERVICE_URL: http://localhost:4748
+      ECHOSCORE_SERVICE_TOKEN: ci-service-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/echoscore/pyproject.toml
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1
+      - run: pnpm install --frozen-lockfile && pip install -e services/echoscore
+      - run: pnpm --filter @echovault/web exec playwright install --with-deps chromium
+      - name: Start EchoScore
+        working-directory: services/echoscore
+        run: nohup python -m uvicorn app.main:app --port 4748 > /tmp/echoscore.log 2>&1 &
+      - run: pnpm db:migrate && pnpm db:seed --demo
+      - run: pnpm build
+      - name: Start web + worker
+        run: |
+          nohup pnpm --filter @echovault/web start > /tmp/web.log 2>&1 &
+          nohup pnpm worker > /tmp/worker.log 2>&1 &
+          npx wait-on http://localhost:4747/api/v1/health --timeout 60000
+      - name: Playwright
+        run: pnpm --filter @echovault/web exec playwright test
+      - name: Logs and traces on failure
+        if: failure()
+        run: tail -n 200 /tmp/web.log /tmp/worker.log /tmp/echoscore.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
